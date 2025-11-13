@@ -1,62 +1,51 @@
 import streamlit as st
-import time
-import requests
-from streamlit_lottie import st_lottie
+import chess
+import chess.svg
+from io import StringIO
+import streamlit.components.v1 as components
 
-# --- Page setup ---
-st.set_page_config(page_title="Animated Dashboard", page_icon="📊", layout="centered")
+st.set_page_config(page_title="Streamlit Chess", page_icon="♟️", layout="centered")
 
-# --- Helper function to load Lottie files ---
-def load_lottie_url(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+st.title("Chess Game")
 
-# --- Load animations ---
-intro_url = "https://assets4.lottiefiles.com/packages/lf20_jcikwtux.json"
-check_url = "https://assets2.lottiefiles.com/packages/lf20_touohxv0.json"
-intro_anim = load_lottie_url(intro_url)
-check_anim = load_lottie_url(check_url)
+# Initialize session state for the board
+if "board" not in st.session_state:
+    st.session_state.board = chess.Board()
 
-# --- Title & Intro ---
-st.title("Animated Streamlit Dashboard")
-st.write("A clean demonstration of motion and interactivity in Streamlit.")
+board = st.session_state.board
 
-st.divider()
+# Render board as SVG
+board_svg = chess.svg.board(board=board, size=400)
+components.html(board_svg, height=500)
 
-# --- Lottie intro animation ---
-st_lottie(intro_anim, height=240, key="intro")
+# Move input
+st.subheader("Make a move (UCI notation, e.g. e2e4):")
+move_input = st.text_input("Enter your move:")
 
-# --- Loading animation ---
-st.subheader("Initializing dashboard...")
-progress_bar = st.progress(0)
-status_text = st.empty()
+# Process move
+if move_input:
+    try:
+        move = chess.Move.from_uci(move_input.strip())
+        if move in board.legal_moves:
+            board.push(move)
+            st.success(f"Move played: {move_input}")
+        else:
+            st.error("Illegal move!")
+    except ValueError:
+        st.error("Invalid input format. Use UCI notation (like e2e4).")
 
-for i in range(101):
-    progress_bar.progress(i)
-    status_text.text(f"Loading components: {i}%")
-    time.sleep(0.02)
+# Game state messages
+if board.is_checkmate():
+    st.warning("Checkmate! Game over.")
+elif board.is_stalemate():
+    st.info("Stalemate.")
+elif board.is_insufficient_material():
+    st.info("Draw due to insufficient material.")
+elif board.is_check():
+    st.warning("Check!")
 
-status_text.text("Loading complete.")
-st.success("Dashboard is ready.")
-st.divider()
-
-# --- Dynamic text animation ---
-st.subheader("System Activity")
-placeholder = st.empty()
-messages = ["Connecting to server...", "Fetching data...", "Building charts...", "Complete."]
-for msg in messages:
-    placeholder.markdown(f"#### {msg}")
-    time.sleep(0.5)
-
-placeholder.markdown("#### All systems operational.")
-
-# --- Outro animation ---
-st_lottie(check_anim, height=180, key="check")
-
-st.markdown("---")
-st.caption("Built with Streamlit and Lottie • Minimal Edition")
-
-
+# Restart button
+if st.button("Restart Game"):
+    st.session_state.board = chess.Board()
+    st.experimental_rerun()
 
